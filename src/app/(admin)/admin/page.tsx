@@ -10,9 +10,8 @@ import {
   Sparkles,
   TrendingUp,
   AlertTriangle,
- Lightbulb,
+  Lightbulb,
 } from "lucide-react";
-
 import {
   Area,
   AreaChart,
@@ -22,7 +21,6 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-
 import { analyticsData } from "@/lib/data";
 
 const recentSales = [
@@ -53,32 +51,74 @@ const recentSales = [
   },
 ];
 
-const aiInsights = [
-  {
-    icon: TrendingUp,
-    title: "Revenue Momentum",
-    text: "Revenue increased 20.1% compared with last month. Saturday is currently the strongest sales day.",
-  },
-  {
-    icon: AlertTriangle,
-    title: "Conversion Risk",
-    text: "Visitors increased by 19%, but conversion remains low on mobile devices.",
-  },
-  {
-    icon: Lightbulb,
-    title: "Recommended Action",
-    text: "Launch a weekend flash sale and promote best-selling products on the homepage.",
-  },
-];
-
 export default function AdminDashboard() {
   const [generated, setGenerated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [insights, setInsights] = useState<
+    {
+      icon: typeof TrendingUp;
+      title: string;
+      text: string;
+    }[]
+  >([]);
 
   const generateInsights = () => {
     setLoading(true);
 
     setTimeout(() => {
+      const storedOrders = JSON.parse(
+        localStorage.getItem("nexstore-orders") || "[]"
+      );
+
+      const storedProducts = JSON.parse(
+        localStorage.getItem("nexstore-products") || "[]"
+      );
+
+      const totalRevenue = storedOrders.reduce(
+        (sum: number, order: { total: number }) => sum + order.total,
+        0
+      );
+
+      const pendingOrders = storedOrders.filter(
+        (order: { status: string }) => order.status === "PENDING"
+      ).length;
+
+      const processingOrders = storedOrders.filter(
+        (order: { status: string }) => order.status === "PROCESSING"
+      ).length;
+
+      const lowStockProducts = storedProducts.filter(
+        (product: { stock: number }) => product.stock <= 10
+      );
+
+      const dynamicInsights = [
+        {
+          icon: TrendingUp,
+          title: "Revenue Movement",
+          text:
+            storedOrders.length > 0
+              ? `The latest checkout activity generated $${totalRevenue.toLocaleString()} in tracked demo revenue. AI predicts higher short-term demand if similar purchase behavior continues.`
+              : "No new checkout activity detected yet. AI recommends testing the checkout flow to generate fresh revenue signals.",
+        },
+        {
+          icon: AlertTriangle,
+          title: "Fulfillment Risk",
+          text:
+            pendingOrders + processingOrders > 0
+              ? `${pendingOrders + processingOrders} order(s) are not shipped yet. AI recommends prioritizing fulfillment to reduce customer waiting time.`
+              : "All tracked demo orders are shipped. Fulfillment risk is currently low.",
+        },
+        {
+          icon: Lightbulb,
+          title: "Inventory & Pricing Recommendation",
+          text:
+            lowStockProducts.length > 0
+              ? `${lowStockProducts.length} product(s) are low in stock. AI recommends increasing price slightly or restocking before running a promotion.`
+              : "Inventory level is stable. AI recommends promoting high-margin products in the homepage hero section.",
+        },
+      ];
+
+      setInsights(dynamicInsights);
       setGenerated(true);
       setLoading(false);
     }, 1200);
@@ -94,10 +134,8 @@ export default function AdminDashboard() {
             </CardTitle>
             <DollarSign className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </CardHeader>
-
           <CardContent>
             <div className="text-2xl font-bold">$45,231.89</div>
-
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               +20.1% from last month
             </p>
@@ -111,10 +149,8 @@ export default function AdminDashboard() {
             </CardTitle>
             <CreditCard className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </CardHeader>
-
           <CardContent>
             <div className="text-2xl font-bold">+2350</div>
-
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               +180.1% from last month
             </p>
@@ -123,15 +159,11 @@ export default function AdminDashboard() {
 
         <Card className="dark:border-zinc-800 dark:bg-zinc-950">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Visitors
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Visitors</CardTitle>
             <Users className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </CardHeader>
-
           <CardContent>
             <div className="text-2xl font-bold">+12,234</div>
-
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               +19% from last month
             </p>
@@ -145,10 +177,8 @@ export default function AdminDashboard() {
             </CardTitle>
             <Activity className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </CardHeader>
-
           <CardContent>
             <div className="text-2xl font-bold">4.3%</div>
-
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               +0.5% from last month
             </p>
@@ -174,7 +204,8 @@ export default function AdminDashboard() {
         <CardContent>
           {!generated && !loading && (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Click the button to generate proactive business insights.
+              AI reads current checkout orders, delivery status, stock levels,
+              and product prices to generate business recommendations.
             </p>
           )}
 
@@ -191,7 +222,7 @@ export default function AdminDashboard() {
 
           {generated && (
             <div className="grid gap-4 md:grid-cols-3">
-              {aiInsights.map((item) => {
+              {insights.map((item) => {
                 const Icon = item.icon;
 
                 return (
@@ -200,11 +231,7 @@ export default function AdminDashboard() {
                     className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900"
                   >
                     <Icon className="mb-3 h-5 w-5" />
-
-                    <h3 className="font-semibold">
-                      {item.title}
-                    </h3>
-
+                    <h3 className="font-semibold">{item.title}</h3>
                     <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                       {item.text}
                     </p>
@@ -239,7 +266,6 @@ export default function AdminDashboard() {
                         stopColor="hsl(var(--primary))"
                         stopOpacity={0.8}
                       />
-
                       <stop
                         offset="95%"
                         stopColor="hsl(var(--primary))"
@@ -295,19 +321,13 @@ export default function AdminDashboard() {
 
           <CardContent className="space-y-6">
             {recentSales.map((sale) => (
-              <div
-                key={sale.email}
-                className="flex items-center gap-4"
-              >
+              <div key={sale.email} className="flex items-center gap-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 font-bold dark:bg-zinc-900">
                   {sale.name.charAt(0)}
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">
-                    {sale.name}
-                  </p>
-
+                  <p className="text-sm font-medium">{sale.name}</p>
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     {sale.email}
                   </p>
