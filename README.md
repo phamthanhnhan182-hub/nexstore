@@ -9,6 +9,13 @@ The project focuses on:
 * Real-time state synchronization
 * AI-powered shopping and analytics experiences
 
+# GitHub Repository
+
+The full project source code is available on GitHub:
+
+Repository URL:
+https://github.com/phamthanhnhan182-hub/nexstore
+
 ---
 
 # Live Demo & Credentials
