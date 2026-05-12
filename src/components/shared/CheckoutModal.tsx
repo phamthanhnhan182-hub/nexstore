@@ -18,29 +18,51 @@ export function CheckoutModal({ open, onClose }: CheckoutModalProps) {
     0
   );
 
-  const handleComplete = () => {
-    const newOrder = {
-      id: orderId,
-      customerName: "Demo Customer",
-      customerEmail: "customer@nexstore.dev",
-      createdAt: new Date().toISOString(),
-      total,
-      status: "PROCESSING",
-      items: cart.items,
+const handleComplete = () => {
+  const storedProducts = JSON.parse(
+    localStorage.getItem("nexstore-products") || "[]"
+  );
+
+  const updatedProducts = storedProducts.map((product: any) => {
+    const cartItem = cart.items.find((item) => item.id === product.id);
+
+    if (!cartItem) return product;
+
+    return {
+      ...product,
+      stock: Math.max(product.stock - cartItem.quantity, 0),
     };
+  });
 
-    const existingOrders = JSON.parse(
-      localStorage.getItem("nexstore-orders") || "[]"
-    );
+  localStorage.setItem(
+    "nexstore-products",
+    JSON.stringify(updatedProducts)
+  );
 
-    localStorage.setItem(
-      "nexstore-orders",
-      JSON.stringify([newOrder, ...existingOrders])
-    );
-
-    cart.clearCart();
-    onClose();
+  const newOrder = {
+    id: orderId,
+    customerName: "Demo Customer",
+    customerEmail: "customer@nexstore.dev",
+    createdAt: new Date().toISOString(),
+    total,
+    status: "PROCESSING",
+    items: cart.items,
   };
+
+  const existingOrders = JSON.parse(
+    localStorage.getItem("nexstore-orders") || "[]"
+  );
+
+  localStorage.setItem(
+    "nexstore-orders",
+    JSON.stringify([newOrder, ...existingOrders])
+  );
+
+  cart.clearCart();
+  onClose();
+
+  window.location.reload();
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

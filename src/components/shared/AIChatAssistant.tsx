@@ -1,69 +1,194 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MessageSquare, X, Send, Bot, User, Sparkles } from "lucide-react";
+import {
+  X,
+  Send,
+  Bot,
+  User,
+  Sparkles,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { products } from "@/lib/data";
+
+import { products as initialProducts } from "@/lib/data";
 import { ProductCard } from "@/components/customer/ProductCard";
+
+type Product = (typeof initialProducts)[number];
 
 type Message = {
   id: string;
   role: "user" | "ai";
   content: string;
   isTyping?: boolean;
-  productPayload?: any;
+  productPayload?: Product;
 };
 
 export function AIChatAssistant() {
   const [isOpen, setIsOpen] = useState(false);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init",
       role: "ai",
-      content: "Hello! I'm your NexStore AI assistant. What are you looking for today?",
+      content:
+        "Hello! I'm your NexStore AI assistant. Ask me about laptops, headphones, monitors, stock availability, or best sellers.",
     },
   ]);
+
   const [input, setInput] = useState("");
+
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [products, setProducts] =
+    useState<Product[]>(initialProducts);
+
+  useEffect(() => {
+    const storedProducts = JSON.parse(
+      localStorage.getItem("nexstore-products") || "null"
+    );
+
+    if (storedProducts) {
+      setProducts(storedProducts);
+    }
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop =
+        scrollRef.current.scrollHeight;
     }
   }, [messages, isOpen]);
+
+  const getBestSeller = () => {
+    return [...products].sort(
+      (a, b) => b.stock - a.stock
+    )[0];
+  };
+
+  const getLowStockProducts = () => {
+    return products.filter((p) => p.stock <= 10);
+  };
 
   const handleSend = () => {
     if (!input.trim()) return;
 
     const userMsg = input.trim();
+
     setInput("");
 
     setMessages((prev) => [
       ...prev,
-      { id: Date.now().toString(), role: "user", content: userMsg },
-      { id: "typing", role: "ai", content: "Thinking...", isTyping: true },
+      {
+        id: Date.now().toString(),
+        role: "user",
+        content: userMsg,
+      },
+      {
+        id: "typing",
+        role: "ai",
+        content: "Thinking...",
+        isTyping: true,
+      },
     ]);
 
-    // Mock AI Response latency
     setTimeout(() => {
-      let aiResponse = "I can help you find products.";
-      let productPayload = null;
+      let aiResponse = "";
+      let productPayload: Product | undefined;
 
       const lowerInput = userMsg.toLowerCase();
-      if (lowerInput.includes("macbook") || lowerInput.includes("laptop")) {
-        aiResponse = "Based on your request, I highly recommend the new MacBook Pro. Here it is:";
-        productPayload = products[0];
-      } else if (lowerInput.includes("headphone") || lowerInput.includes("audio")) {
-        aiResponse = "For premium audio, the Sony WH-1000XM5 is currently our best seller:";
-        productPayload = products[1];
-      } else {
-        aiResponse = "I'm not sure about that specific item, but you can browse our catalog. Would you like me to show you our best sellers?";
+
+      // Laptop
+      if (
+        lowerInput.includes("macbook") ||
+        lowerInput.includes("laptop")
+      ) {
+        const product = products.find((p) =>
+          p.name.toLowerCase().includes("macbook")
+        );
+
+        if (product) {
+          if (product.stock <= 0) {
+            aiResponse =
+              `${product.name} is currently out of stock. ` +
+              `AI recommends checking again later or exploring similar laptops.`;
+          } else {
+            aiResponse =
+              `${product.name} is available with ${product.stock} unit(s) left in stock.`;
+
+            productPayload = product;
+          }
+        }
+      }
+
+      // Headphones
+      else if (
+        lowerInput.includes("headphone") ||
+        lowerInput.includes("audio") ||
+        lowerInput.includes("sony")
+      ) {
+        const product = products.find((p) =>
+          p.name.toLowerCase().includes("sony")
+        );
+
+        if (product) {
+          if (product.stock <= 0) {
+            aiResponse =
+              `${product.name} is currently sold out.`;
+          } else {
+            aiResponse =
+              `${product.name} is one of our best-selling audio products with ${product.stock} remaining.`;
+
+            productPayload = product;
+          }
+        }
+      }
+
+      // Best seller
+      else if (
+        lowerInput.includes("best seller") ||
+        lowerInput.includes("popular")
+      ) {
+        const bestSeller = getBestSeller();
+
+        aiResponse =
+          `${bestSeller.name} is currently trending with high stock movement and strong customer demand.`;
+
+        productPayload = bestSeller;
+      }
+
+      // Low stock
+      else if (
+        lowerInput.includes("low stock") ||
+        lowerInput.includes("limited")
+      ) {
+        const lowStock = getLowStockProducts();
+
+        if (lowStock.length > 0) {
+          aiResponse =
+            `AI detected ${lowStock.length} low-stock product(s). ` +
+            `${lowStock[0].name} may sell out soon.`;
+
+          productPayload = lowStock[0];
+        } else {
+          aiResponse =
+            "All products currently have healthy stock levels.";
+        }
+      }
+
+      // Default
+      else {
+        aiResponse =
+          "I can help with product recommendations, stock availability, pricing, and best sellers.";
       }
 
       setMessages((prev) => {
-        const filtered = prev.filter((m) => m.id !== "typing");
+        const filtered = prev.filter(
+          (m) => m.id !== "typing"
+        );
+
         return [
           ...filtered,
           {
@@ -74,63 +199,70 @@ export function AIChatAssistant() {
           },
         ];
       });
-    }, 1500);
+    }, 1200);
   };
 
   return (
     <>
-      {/* Toggle Button */}
       <Button
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl z-50 transition-transform hover:scale-110"
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-2xl"
         onClick={() => setIsOpen(!isOpen)}
         size="icon"
       >
-        {isOpen ? <X className="h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
+        {isOpen ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <Sparkles className="h-6 w-6" />
+        )}
       </Button>
 
-      {/* Chat Box */}
       {isOpen && (
-        <Card className="fixed bottom-24 right-6 w-80 md:w-96 h-[500px] flex flex-col shadow-2xl z-50 border-primary/20 overflow-hidden animate-in slide-in-from-bottom-5">
-          <div className="bg-primary p-4 text-primary-foreground flex items-center gap-3">
-            <div className="p-2 bg-primary-foreground/20 rounded-full">
+        <Card className="fixed bottom-24 right-6 z-50 flex h-[650px] w-[420px] flex-col overflow-hidden border shadow-2xl">
+          <div className="flex items-center gap-3 border-b p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-white">
               <Bot className="h-5 w-5" />
             </div>
+
             <div>
-              <h3 className="font-semibold">NexStore AI</h3>
-              <p className="text-xs text-primary-foreground/80">Always here to help</p>
+              <h3 className="font-semibold">
+                NexStore AI
+              </h3>
+
+              <p className="text-sm text-muted-foreground">
+                Real-time shopping assistant
+              </p>
             </div>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/30">
-            {messages.map((msg) => (
+          <div
+            ref={scrollRef}
+            className="flex-1 space-y-4 overflow-y-auto p-4"
+          >
+            {messages.map((message) => (
               <div
-                key={msg.id}
-                className={`flex gap-3 ${
-                  msg.role === "user" ? "flex-row-reverse" : ""
+                key={message.id}
+                className={`flex ${
+                  message.role === "user"
+                    ? "justify-end"
+                    : "justify-start"
                 }`}
               >
-                <div
-                  className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
-                    msg.role === "user"
-                      ? "bg-secondary text-secondary-foreground"
-                      : "bg-primary text-primary-foreground"
-                  }`}
-                >
-                  {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                </div>
-                <div className={`flex flex-col gap-2 max-w-[80%] ${msg.role === "user" ? "items-end" : "items-start"}`}>
+                <div className="max-w-[85%]">
                   <div
-                    className={`px-4 py-2 rounded-2xl ${
-                      msg.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-tr-sm"
-                        : "bg-background border rounded-tl-sm shadow-sm"
-                    } ${msg.isTyping ? "animate-pulse" : ""}`}
+                    className={`rounded-2xl px-4 py-3 ${
+                      message.role === "user"
+                        ? "bg-black text-white"
+                        : "bg-zinc-100 dark:bg-zinc-900"
+                    }`}
                   >
-                    <p className="text-sm">{msg.content}</p>
+                    {message.content}
                   </div>
-                  {msg.productPayload && (
-                    <div className="w-full max-w-[240px] mt-2 animate-in fade-in zoom-in duration-300">
-                      <ProductCard product={msg.productPayload} />
+
+                  {message.productPayload && (
+                    <div className="mt-3">
+                      <ProductCard
+                        product={message.productPayload}
+                      />
                     </div>
                   )}
                 </div>
@@ -138,24 +270,26 @@ export function AIChatAssistant() {
             ))}
           </div>
 
-          <div className="p-4 bg-background border-t">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSend();
+          <div className="flex gap-2 border-t p-4">
+            <Input
+              value={input}
+              onChange={(e) =>
+                setInput(e.target.value)
+              }
+              placeholder="Ask AI about products..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSend();
+                }
               }}
-              className="flex gap-2"
+            />
+
+            <Button
+              size="icon"
+              onClick={handleSend}
             >
-              <Input
-                placeholder="Ask for recommendations..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                className="rounded-full bg-muted/50 focus-visible:ring-primary/20"
-              />
-              <Button type="submit" size="icon" className="rounded-full shrink-0" disabled={!input.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
         </Card>
       )}

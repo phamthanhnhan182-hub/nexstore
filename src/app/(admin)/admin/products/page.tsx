@@ -36,16 +36,24 @@ export default function AdminProducts() {
 
   useEffect(() => {
     const storedProducts = JSON.parse(
-      localStorage.getItem("nexstore-products") || "null"
+      localStorage.getItem("nexstore-products") || "[]"
     );
 
-    if (storedProducts) {
+    if (storedProducts.length > 0) {
       setProducts(storedProducts);
+    } else {
+      localStorage.setItem(
+        "nexstore-products",
+        JSON.stringify(initialProducts)
+      );
+
+      setProducts(initialProducts);
     }
   }, []);
 
   const syncProducts = (updatedProducts: Product[]) => {
     setProducts(updatedProducts);
+
     localStorage.setItem(
       "nexstore-products",
       JSON.stringify(updatedProducts)
@@ -74,12 +82,19 @@ export default function AdminProducts() {
       product.id === id
         ? {
             ...product,
-            stock: Number.isNaN(nextStock) ? product.stock : nextStock,
+            stock: Number.isNaN(nextStock)
+              ? product.stock
+              : Math.max(nextStock, 0),
           }
         : product
     );
 
     syncProducts(updatedProducts);
+  };
+
+  const resetInventory = () => {
+    syncProducts(initialProducts);
+    toast.success("Inventory reset to seeded dataset");
   };
 
   const handleGenerateSEO = () => {
@@ -107,82 +122,88 @@ export default function AdminProducts() {
         <div>
           <h1 className="text-3xl font-bold">Products</h1>
           <p className="text-sm text-muted-foreground">
-            Admin can update price and stock. These changes are stored in the
-            replaceable demo data layer for AI analytics.
+            Admin can update price and stock. Inventory changes are persisted in
+            the replaceable demo data layer and used by checkout + AI analytics.
           </p>
         </div>
 
-        <Dialog>
-          <DialogTrigger
-            render={
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Product
-              </Button>
-            }
-          />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={resetInventory}>
+            Reset Inventory
+          </Button>
 
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Add New Product</DialogTitle>
-            </DialogHeader>
+          <Dialog>
+            <DialogTrigger
+              render={
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Product
+                </Button>
+              }
+            />
 
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Product Name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. iPhone 15 Pro"
-                />
-              </div>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Add New Product</DialogTitle>
+              </DialogHeader>
 
-              <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="flex items-center gap-2 font-semibold">
-                      <Sparkles className="h-4 w-4 text-purple-500" />
-                      AI SEO Optimizer
-                    </h4>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Product Name</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. iPhone 15 Pro"
+                  />
+                </div>
 
-                    <p className="text-sm text-muted-foreground">
-                      Generate high-converting SEO tags automatically
-                    </p>
+                <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="flex items-center gap-2 font-semibold">
+                        <Sparkles className="h-4 w-4 text-purple-500" />
+                        AI SEO Optimizer
+                      </h4>
+
+                      <p className="text-sm text-muted-foreground">
+                        Generate high-converting SEO tags automatically
+                      </p>
+                    </div>
+
+                    <Button
+                      onClick={handleGenerateSEO}
+                      disabled={isGenerating || !name}
+                      variant="secondary"
+                    >
+                      {isGenerating ? "Generating..." : "Generate AI SEO"}
+                    </Button>
                   </div>
 
-                  <Button
-                    onClick={handleGenerateSEO}
-                    disabled={isGenerating || !name}
-                    variant="secondary"
-                  >
-                    {isGenerating ? "Generating..." : "Generate AI SEO"}
-                  </Button>
-                </div>
+                  <div className="grid gap-2">
+                    <Label>SEO Title</Label>
+                    <Input
+                      value={seoTitle}
+                      readOnly
+                      placeholder="AI will generate this..."
+                      className="bg-background"
+                    />
+                  </div>
 
-                <div className="grid gap-2">
-                  <Label>SEO Title</Label>
-                  <Input
-                    value={seoTitle}
-                    readOnly
-                    placeholder="AI will generate this..."
-                    className="bg-background"
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>SEO Description</Label>
-                  <Textarea
-                    value={seoDescription}
-                    readOnly
-                    placeholder="AI will generate this..."
-                    className="bg-background"
-                  />
+                  <div className="grid gap-2">
+                    <Label>SEO Description</Label>
+                    <Textarea
+                      value={seoDescription}
+                      readOnly
+                      placeholder="AI will generate this..."
+                      className="bg-background"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="rounded-md border">
@@ -240,9 +261,19 @@ export default function AdminProducts() {
 
                 <TableCell className="text-right">
                   <Badge
-                    variant={product.stock > 10 ? "default" : "destructive"}
+                    variant={
+                      product.stock <= 0
+                        ? "destructive"
+                        : product.stock > 10
+                          ? "default"
+                          : "destructive"
+                    }
                   >
-                    {product.stock > 10 ? "In Stock" : "Low Stock"}
+                    {product.stock <= 0
+                      ? "Out of Stock"
+                      : product.stock > 10
+                        ? "In Stock"
+                        : "Low Stock"}
                   </Badge>
                 </TableCell>
               </TableRow>

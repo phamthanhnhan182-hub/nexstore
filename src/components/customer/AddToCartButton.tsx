@@ -9,14 +9,31 @@ import { toast } from "sonner";
 export function AddToCartButton({ product }: { product: Product }) {
   const addItem = useCartStore((state) => state.addItem);
 
-  const handleAddToCart = () => {
-    addItem({
-      ...product,
-      quantity: 1,
-    });
+const handleAddToCart = () => {
+  const storedProducts = JSON.parse(
+    localStorage.getItem("nexstore-products") || "[]"
+  );
 
-    toast.success(`${product.name} added to cart`);
-  };
+  const currentProduct = storedProducts.find(
+    (p: any) => p.id === product.id
+  );
+
+  const currentStock = currentProduct
+    ? currentProduct.stock
+    : product.stock;
+
+  if (currentStock <= 0) {
+    toast.error("Out of stock");
+    return;
+  }
+
+  addItem({
+    ...product,
+    quantity: 1,
+  });
+
+  toast.success(`${product.name} added to cart`);
+};
 
   return (
     <Button

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Product } from "@/lib/data";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,30 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
 
+  const [stock, setStock] = useState(product.stock);
+
+  useEffect(() => {
+    const storedProducts = JSON.parse(
+      localStorage.getItem("nexstore-products") || "[]"
+    );
+
+    const updatedProduct = storedProducts.find(
+      (p: any) => p.id === product.id
+    );
+
+    if (updatedProduct) {
+      setStock(updatedProduct.stock);
+    }
+  }, [product.id]);
+
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (stock <= 0) {
+      toast.error("Out of stock");
+      return;
+    }
 
     addItem({
       ...product,
@@ -51,6 +73,10 @@ export function ProductCard({ product }: ProductCardProps) {
           <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
             {product.description}
           </p>
+
+          <p className="mt-2 text-sm font-medium">
+            Stock: {stock}
+          </p>
         </CardContent>
 
         <CardFooter className="flex items-center justify-between p-4 pt-0">
@@ -61,10 +87,12 @@ export function ProductCard({ product }: ProductCardProps) {
           <Button
             onClick={handleAddToCart}
             size="sm"
+            disabled={stock <= 0}
             className="rounded-full"
           >
             <ShoppingCart className="mr-2 h-4 w-4" />
-            Add
+
+            {stock <= 0 ? "Out of Stock" : "Add"}
           </Button>
         </CardFooter>
       </Card>
