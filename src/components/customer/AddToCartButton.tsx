@@ -10,13 +10,22 @@ export function AddToCartButton({ product }: { product: Product }) {
   const addItem = useCartStore((state) => state.addItem);
 
   const handleAddToCart = () => {
-    addItem(product);
+    addItem({
+      ...product,
+      quantity: 1,
+    });
+
     toast.success(`${product.name} added to cart`);
   };
 
   return (
-    <Button size="lg" className="w-full text-lg h-14" onClick={handleAddToCart}>
-      <ShoppingCart className="mr-2 h-5 w-5" /> Add to Cart
+    <Button
+      size="lg"
+      className="h-14 w-full text-lg"
+      onClick={handleAddToCart}
+    >
+      <ShoppingCart className="mr-2 h-5 w-5" />
+      Add to Cart
     </Button>
   );
 }
