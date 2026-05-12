@@ -91,15 +91,15 @@ export default function AdminDashboard() {
 
     setRecentOrders(storedOrders.slice(0, 5));
 
-setChartData([
-  { name: "Mon", revenue: Math.round(totalRevenue * 0.2), visitors: 1200 },
-  { name: "Tue", revenue: Math.round(totalRevenue * 0.35), visitors: 1600 },
-  { name: "Wed", revenue: Math.round(totalRevenue * 0.5), visitors: 2100 },
-  { name: "Thu", revenue: Math.round(totalRevenue * 0.65), visitors: 2400 },
-  { name: "Fri", revenue: Math.round(totalRevenue * 0.8), visitors: 2800 },
-  { name: "Sat", revenue: Math.round(totalRevenue), visitors: 3400 },
-  { name: "Sun", revenue: Math.round(totalRevenue * 0.9), visitors: 3100 },
-]);
+    setChartData([
+      { name: "Mon", revenue: Math.round(totalRevenue * 0.2), visitors: 1200 },
+      { name: "Tue", revenue: Math.round(totalRevenue * 0.35), visitors: 1600 },
+      { name: "Wed", revenue: Math.round(totalRevenue * 0.5), visitors: 2100 },
+      { name: "Thu", revenue: Math.round(totalRevenue * 0.65), visitors: 2400 },
+      { name: "Fri", revenue: Math.round(totalRevenue * 0.8), visitors: 2800 },
+      { name: "Sat", revenue: Math.round(totalRevenue), visitors: 3400 },
+      { name: "Sun", revenue: Math.round(totalRevenue * 0.9), visitors: 3100 },
+    ]);
   };
 
   useEffect(() => {
