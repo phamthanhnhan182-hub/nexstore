@@ -27,12 +27,26 @@ import { toast } from "sonner";
 
 type Product = (typeof initialProducts)[number];
 
+const createSlug = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [isGenerating, setIsGenerating] = useState(false);
   const [seoDescription, setSeoDescription] = useState("");
   const [seoTitle, setSeoTitle] = useState("");
+
   const [name, setName] = useState("");
+  const [category, setCategory] = useState("Accessories");
+  const [price, setPrice] = useState("");
+  const [stock, setStock] = useState("");
+  const [image, setImage] = useState(
+    "https://images.unsplash.com/photo-1523275335684-37898b6baf30"
+  );
 
   useEffect(() => {
     const storedProducts = JSON.parse(
@@ -42,22 +56,14 @@ export default function AdminProducts() {
     if (storedProducts.length > 0) {
       setProducts(storedProducts);
     } else {
-      localStorage.setItem(
-        "nexstore-products",
-        JSON.stringify(initialProducts)
-      );
-
+      localStorage.setItem("nexstore-products", JSON.stringify(initialProducts));
       setProducts(initialProducts);
     }
   }, []);
 
   const syncProducts = (updatedProducts: Product[]) => {
     setProducts(updatedProducts);
-
-    localStorage.setItem(
-      "nexstore-products",
-      JSON.stringify(updatedProducts)
-    );
+    localStorage.setItem("nexstore-products", JSON.stringify(updatedProducts));
   };
 
   const updatePrice = (id: string, value: string) => {
@@ -116,14 +122,54 @@ export default function AdminProducts() {
     }, 1500);
   };
 
+  const handleAddProduct = () => {
+    if (!name || !price || !stock) {
+      toast.error("Please enter product name, price, and stock");
+      return;
+    }
+
+    const newProduct = {
+      id: `custom-${Date.now()}`,
+      name,
+      slug: createSlug(name),
+      price: Number(price),
+      category,
+      stock: Number(stock),
+      image,
+      description:
+        seoDescription ||
+        `${name} is a newly added product in the NexStore catalog.`,
+      seoMeta: {
+        title: seoTitle || `Buy ${name} | NexStore`,
+        description:
+          seoDescription ||
+          `${name} is available now at NexStore with competitive pricing and fast checkout.`,
+      },
+    } as Product;
+
+    const updatedProducts = [newProduct, ...products];
+
+    syncProducts(updatedProducts);
+
+    setName("");
+    setCategory("Accessories");
+    setPrice("");
+    setStock("");
+    setImage("https://images.unsplash.com/photo-1523275335684-37898b6baf30");
+    setSeoTitle("");
+    setSeoDescription("");
+
+    toast.success("Product added successfully");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Products</h1>
           <p className="text-sm text-muted-foreground">
-            Admin can update price and stock. Inventory changes are persisted in
-            the replaceable demo data layer and used by checkout + AI analytics.
+            Admin can add products, update price, and update stock. Inventory
+            changes are persisted in the replaceable demo data layer.
           </p>
         </div>
 
@@ -142,20 +188,61 @@ export default function AdminProducts() {
               }
             />
 
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[650px]">
               <DialogHeader>
                 <DialogTitle>Add New Product</DialogTitle>
               </DialogHeader>
 
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Product Name</Label>
+                  <Label>Product Name</Label>
                   <Input
-                    id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. iPhone 15 Pro"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Category</Label>
+                    <Input
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      placeholder="e.g. Laptops"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Price</Label>
+                    <Input
+                      type="number"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="e.g. 999"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>Stock</Label>
+                    <Input
+                      type="number"
+                      value={stock}
+                      onChange={(e) => setStock(e.target.value)}
+                      placeholder="e.g. 20"
+                    />
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>Image URL</Label>
+                    <Input
+                      value={image}
+                      onChange={(e) => setImage(e.target.value)}
+                      placeholder="https://..."
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
@@ -165,7 +252,6 @@ export default function AdminProducts() {
                         <Sparkles className="h-4 w-4 text-purple-500" />
                         AI SEO Optimizer
                       </h4>
-
                       <p className="text-sm text-muted-foreground">
                         Generate high-converting SEO tags automatically
                       </p>
@@ -200,6 +286,10 @@ export default function AdminProducts() {
                     />
                   </div>
                 </div>
+
+                <Button onClick={handleAddProduct} className="w-full">
+                  Save Product
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -229,7 +319,6 @@ export default function AdminProducts() {
                       className="h-full w-full object-cover"
                     />
                   </div>
-
                   {product.name}
                 </TableCell>
 
@@ -241,9 +330,7 @@ export default function AdminProducts() {
                   <Input
                     type="number"
                     value={product.price}
-                    onChange={(e) =>
-                      updatePrice(product.id, e.target.value)
-                    }
+                    onChange={(e) => updatePrice(product.id, e.target.value)}
                     className="w-[130px]"
                   />
                 </TableCell>
@@ -252,9 +339,7 @@ export default function AdminProducts() {
                   <Input
                     type="number"
                     value={product.stock}
-                    onChange={(e) =>
-                      updateStock(product.id, e.target.value)
-                    }
+                    onChange={(e) => updateStock(product.id, e.target.value)}
                     className="w-[100px]"
                   />
                 </TableCell>

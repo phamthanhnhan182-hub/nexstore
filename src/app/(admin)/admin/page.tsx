@@ -92,13 +92,41 @@ export default function AdminDashboard() {
     setRecentOrders(storedOrders.slice(0, 5));
 
     setChartData([
-      { name: "Mon", revenue: Math.round(totalRevenue * 0.2), visitors: 1200 },
-      { name: "Tue", revenue: Math.round(totalRevenue * 0.35), visitors: 1600 },
-      { name: "Wed", revenue: Math.round(totalRevenue * 0.5), visitors: 2100 },
-      { name: "Thu", revenue: Math.round(totalRevenue * 0.65), visitors: 2400 },
-      { name: "Fri", revenue: Math.round(totalRevenue * 0.8), visitors: 2800 },
-      { name: "Sat", revenue: Math.round(totalRevenue), visitors: 3400 },
-      { name: "Sun", revenue: Math.round(totalRevenue * 0.9), visitors: 3100 },
+      {
+        name: "Mon",
+        revenue: Math.round(totalRevenue * 0.2),
+        visitors: 1200,
+      },
+      {
+        name: "Tue",
+        revenue: Math.round(totalRevenue * 0.35),
+        visitors: 1600,
+      },
+      {
+        name: "Wed",
+        revenue: Math.round(totalRevenue * 0.5),
+        visitors: 2100,
+      },
+      {
+        name: "Thu",
+        revenue: Math.round(totalRevenue * 0.65),
+        visitors: 2400,
+      },
+      {
+        name: "Fri",
+        revenue: Math.round(totalRevenue * 0.8),
+        visitors: 2800,
+      },
+      {
+        name: "Sat",
+        revenue: Math.round(totalRevenue),
+        visitors: 3400,
+      },
+      {
+        name: "Sun",
+        revenue: Math.round(totalRevenue * 0.9),
+        visitors: 3100,
+      },
     ]);
   };
 
@@ -137,11 +165,20 @@ export default function AdminDashboard() {
         (order) => order.status === "PROCESSING"
       ).length;
 
+      const shippedOrders = storedOrders.filter(
+        (order) => order.status === "SHIPPED"
+      ).length;
+
       const lowStockProducts = storedProducts.filter(
-        (product: { stock: number }) => product.stock <= 10
+        (product: { stock: number }) => product.stock > 0 && product.stock <= 10
+      );
+
+      const outOfStockProducts = storedProducts.filter(
+        (product: { stock: number }) => product.stock <= 0
       );
 
       const productSales = new Map<string, number>();
+      const productRevenue = new Map<string, number>();
 
       storedOrders.forEach((order) => {
         order.items?.forEach((item) => {
@@ -149,37 +186,71 @@ export default function AdminDashboard() {
             item.name,
             (productSales.get(item.name) || 0) + item.quantity
           );
+
+          productRevenue.set(
+            item.name,
+            (productRevenue.get(item.name) || 0) + item.price * item.quantity
+          );
         });
       });
 
-      const topProduct =
-        [...productSales.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ||
-        "No product yet";
+      const topProduct = [...productSales.entries()].sort(
+        (a, b) => b[1] - a[1]
+      )[0];
+
+      const topRevenueProduct = [...productRevenue.entries()].sort(
+        (a, b) => b[1] - a[1]
+      )[0];
+
+      const avgOrderValue =
+        storedOrders.length > 0 ? totalRevenue / storedOrders.length : 0;
+
+      const fulfillmentRisk = pendingOrders + processingOrders;
 
       setInsights([
         {
           icon: TrendingUp,
-          title: "Revenue Movement",
+          title: "Revenue & Demand Forecast",
           text:
             storedOrders.length > 0
-              ? `Current tracked revenue is $${totalRevenue.toLocaleString()}. AI detects ${topProduct} as the strongest demand signal.`
-              : "No checkout activity detected yet. AI needs customer orders to generate accurate revenue predictions.",
+              ? `AI analyzed ${
+                  storedOrders.length
+                } real checkout order(s). Total tracked revenue is $${totalRevenue.toLocaleString()}, with an average order value of $${Math.round(
+                  avgOrderValue
+                ).toLocaleString()}. ${
+                  topProduct
+                    ? `${topProduct[0]} is currently the strongest demand signal with ${topProduct[1]} unit(s) sold.`
+                    : "No product-level demand signal is available yet."
+                }`
+              : "No customer checkout activity has been detected yet. AI needs real orders to generate accurate revenue and demand predictions.",
         },
         {
           icon: AlertTriangle,
-          title: "Fulfillment Risk",
+          title: "Fulfillment & Delivery Risk",
           text:
-            pendingOrders + processingOrders > 0
-              ? `${pendingOrders + processingOrders} order(s) are not shipped yet. AI recommends prioritizing fulfillment before running another promotion.`
-              : "All tracked orders are shipped. Fulfillment risk is currently low.",
+            fulfillmentRisk > 0
+              ? `${fulfillmentRisk} order(s) still require fulfillment: ${pendingOrders} pending and ${processingOrders} processing. AI recommends shipping these before launching new promotions. ${shippedOrders} order(s) are already shipped.`
+              : "All tracked orders are shipped or no active fulfillment risk is detected. Operations are currently stable.",
         },
         {
           icon: Lightbulb,
-          title: "Inventory & Pricing Action",
+          title: "Inventory & Pricing Recommendation",
           text:
-            lowStockProducts.length > 0
-              ? `${lowStockProducts.length} product(s) are low in stock. AI recommends restocking or increasing price slightly before demand spikes.`
-              : "Inventory is healthy. AI recommends promoting high-margin products to improve conversion.",
+            outOfStockProducts.length > 0
+              ? `${outOfStockProducts.length} product(s) are out of stock. AI recommends restocking immediately because customers cannot purchase unavailable items.`
+              : lowStockProducts.length > 0
+                ? `${lowStockProducts.length} product(s) are low in stock. AI recommends restocking or slightly increasing prices before demand spikes. ${
+                    topRevenueProduct
+                      ? `${topRevenueProduct[0]} generated $${topRevenueProduct[1].toLocaleString()} and should be prioritized.`
+                      : ""
+                  }`
+                : storedOrders.length > 0
+                  ? `Inventory is healthy. AI recommends promoting ${
+                      topRevenueProduct
+                        ? topRevenueProduct[0]
+                        : "high-margin products"
+                    } because it is generating strong revenue.`
+                  : "Inventory is currently stable. AI recommends collecting more checkout data before making pricing decisions.",
         },
       ]);
 
@@ -194,9 +265,12 @@ export default function AdminDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="dark:border-zinc-800 dark:bg-zinc-950">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Revenue
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </CardHeader>
+
           <CardContent>
             <div className="text-2xl font-bold">
               ${dashboardStats.revenue.toLocaleString()}
@@ -209,9 +283,12 @@ export default function AdminDashboard() {
 
         <Card className="dark:border-zinc-800 dark:bg-zinc-950">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Orders
+            </CardTitle>
             <CreditCard className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </CardHeader>
+
           <CardContent>
             <div className="text-2xl font-bold">
               {dashboardStats.activeOrders}
@@ -227,6 +304,7 @@ export default function AdminDashboard() {
             <CardTitle className="text-sm font-medium">Visitors</CardTitle>
             <Users className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </CardHeader>
+
           <CardContent>
             <div className="text-2xl font-bold">
               {dashboardStats.visitors.toLocaleString()}
@@ -239,9 +317,12 @@ export default function AdminDashboard() {
 
         <Card className="dark:border-zinc-800 dark:bg-zinc-950">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Conversion Rate
+            </CardTitle>
             <Activity className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </CardHeader>
+
           <CardContent>
             <div className="text-2xl font-bold">
               {dashboardStats.conversionRate}%
