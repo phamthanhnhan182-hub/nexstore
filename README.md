@@ -18,6 +18,11 @@ https://github.com/phamthanhnhan182-hub/nexstore
 
 ---
 
+# LINK VIDEO DEMO 
+Link video (Drive):https://drive.google.com/drive/folders/1Uao43XEafVzN4b6lcbyiniocoi1MdI78?usp=sharing
+
+
+
 # Live Demo & Credentials
 
 ### Live Deployment
